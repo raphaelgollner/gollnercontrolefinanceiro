@@ -270,7 +270,7 @@
             document.getElementById(`obs-${id}`).classList.toggle('hidden');
         };
 
-        // Salvar ou Atualizar
+// Salvar ou Atualizar
         document.getElementById('btnSalvar').onclick = async () => {
             const desc = document.getElementById('desc').value;
             const valor = document.getElementById('valor').value;
@@ -287,14 +287,21 @@
                 observacao: obs, recorrente, user_id: user.id 
             };
 
+            let error;
             if (idEmEdicao) {
-                await _supabase.from('transacoes').update(payload).eq('id', idEmEdicao);
+                const resposta = await _supabase.from('transacoes').update(payload).eq('id', idEmEdicao);
+                error = resposta.error;
             } else {
-                await _supabase.from('transacoes').insert([payload]);
+                const resposta = await _supabase.from('transacoes').insert([payload]);
+                error = resposta.error;
             }
 
-            limparFormulario();
-            buscarTodosOsDados();
+            if (error) {
+                alert("Erro ao salvar: " + error.message);
+            } else {
+                limparFormulario();
+                buscarTodosOsDados();
+            }
         };
 
         // Editar
@@ -335,8 +342,12 @@
         // Excluir
         window.excluirRegistro = async (id) => {
             if (confirm("Tem certeza que deseja excluir este registro?")) {
-                await _supabase.from('transacoes').delete().eq('id', id);
-                buscarTodosOsDados();
+                const { error } = await _supabase.from('transacoes').delete().eq('id', id);
+                if (error) {
+                    alert("Erro ao excluir: " + error.message);
+                } else {
+                    buscarTodosOsDados();
+                }
             }
         };
 
