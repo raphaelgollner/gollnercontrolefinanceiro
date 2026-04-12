@@ -2,15 +2,171 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gollner Controle Financeiro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
-        <h1 class="text-2xl font-bold text-blue-600 mb-4">Controle Financeiro</h1>
-        <p class="text-gray-600">O sistema está em desenvolvimento.</p>
-        
-        <button class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Entrar</button>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-700">Controle Financeiro</h1>
+            <button id="btnLogout" class="hidden bg-red-500 text-white px-4 py-2 rounded">Sair</button>
+        </header>
+
+        <div id="loginSection" class="bg-white p-6 rounded-xl shadow-md max-w-sm mx-auto">
+            <h2 class="text-xl font-semibold mb-4 text-center">Acessar Sistema</h2>
+            <input type="text" id="username" placeholder="Nome de Usuário" class="w-full p-2 mb-3 border rounded">
+            <input type="password" id="password" placeholder="Senha" class="w-full p-2 mb-4 border rounded">
+            <button id="btnLogin" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Entrar</button>
+        </div>
+
+        <div id="mainSection" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Adicionar Registro</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <input type="text" id="desc" placeholder="Descrição" class="p-2 border rounded">
+                    <input type="number" id="valor" placeholder="Valor R$" class="p-2 border rounded">
+                    <select id="tipo" class="p-2 border rounded">
+                        <option value="receita">Receita</option>
+                        <option value="despesa">Despesa</option>
+                    </select>
+                    <input type="date" id="data" class="p-2 border rounded">
+                </div>
+                <div class="mt-4 flex items-center">
+                    <input type="checkbox" id="recorrente" class="mr-2">
+                    <label for="recorrente">Lançamento Recorrente</label>
+                </div>
+                <button id="btnSalvar" class="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 w-full md:w-auto">
+                    Salvar Registro
+                </button>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold mb-2">Resumo Mensal</h2>
+                <div id="listaTransacoes" class="divide-y mt-4">
+                    </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        // 1. Configuração de conexão (Mantenha suas chaves aqui)
+        const SUPABASE_URL = 'https://ttkkbdfzavtdrcdyvcqg.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_NKWL0CxOmT-lcAzHL2vLCw_PpYPIk5D';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 2. Elementos da interface (mapeando os botões e campos)
+        const loginSection = document.getElementById('loginSection');
+        const mainSection = document.getElementById('mainSection');
+        const btnLogin = document.getElementById('btnLogin');
+        const btnLogout = document.getElementById('btnLogout');
+        const btnSalvar = document.getElementById('btnSalvar');
+
+        // --- FUNÇÃO DE LOGIN ---
+        async function login() {
+            const userField = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Lógica para aceitar só o nome ou o e-mail completo
+            const email = userField.includes('@') ? userField : `${userField}@sistema.com`;
+            
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                alert('Erro: Usuário ou senha incorretos!');
+            } else {
+                verificarSessao();
+            }
+        }
+
+        // --- FUNÇÃO QUE SALVA NO BANCO ---
+        async function salvarRegistro() {
+            const descricao = document.getElementById('desc').value;
+            const valor = document.getElementById('valor').value;
+            const tipo = document.getElementById('tipo').value;
+            const data = document.getElementById('data').value;
+            const recorrente = document.getElementById('recorrente').checked;
+
+            if (!descricao || !valor || !data) {
+                alert("Por favor, preencha todos os campos.");
+                return;
+            }
+
+            // Pega o ID do usuário logado no momento
+            const { data: { user } } = await _supabase.auth.getUser();
+
+            const { error } = await _supabase.from('transacoes').insert([
+                { 
+                    descricao: descricao, 
+                    valor: parseFloat(valor), 
+                    tipo: tipo, 
+                    data_vencimento: data, 
+                    recorrente: recorrente,
+                    user_id: user.id 
+                }
+            ]);
+
+            if (error) {
+                alert("Erro ao salvar: " + error.message);
+            } else {
+                alert("Salvo com sucesso!");
+                // Limpa os campos
+                document.getElementById('desc').value = '';
+                document.getElementById('valor').value = '';
+                carregarDados(); // Atualiza a lista na tela
+            }
+        }
+
+        // --- FUNÇÃO PARA VERIFICAR SE ESTÁ LOGADO ---
+        async function verificarSessao() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session) {
+                loginSection.classList.add('hidden');
+                mainSection.classList.remove('hidden');
+                btnLogout.classList.remove('hidden');
+                carregarDados();
+            }
+        }
+
+        // --- FUNÇÃO PARA CARREGAR OS DADOS ---
+        async function carregarDados() {
+            const { data: transacoes, error } = await _supabase
+                .from('transacoes')
+                .select('*')
+                .order('data_vencimento', { ascending: true });
+
+            const lista = document.getElementById('listaTransacoes');
+            lista.innerHTML = '';
+
+            if (transacoes) {
+                transacoes.forEach(t => {
+                    const corValor = t.tipo === 'receita' ? 'text-green-600' : 'text-red-600';
+                    lista.innerHTML += `
+                        <div class="py-2 flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">${t.descricao}</p>
+                                <p class="text-sm text-gray-500">${new Date(t.data_vencimento).toLocaleDateString('pt-BR')}</p>
+                            </div>
+                            <span class="${corValor} font-bold">
+                                ${t.tipo === 'receita' ? '+' : '-'} R$ ${t.valor.toFixed(2)}
+                            </span>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // Atribuição dos cliques aos botões
+        btnLogin.onclick = login;
+        btnSalvar.onclick = salvarRegistro;
+        btnLogout.onclick = async () => {
+            await _supabase.auth.signOut();
+            window.location.reload();
+        };
+
+        // Roda ao carregar a página
+        verificarSessao();
+    </script>
 </body>
 </html>
