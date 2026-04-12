@@ -52,14 +52,21 @@
 
         <div id="mainSection" class="hidden space-y-6">
             
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-                <h2 id="tituloForm" class="text-xl font-semibold mb-4">Adicionar Registro</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <input type="text" id="desc" placeholder="Descrição" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                     <input type="number" step="0.01" id="valor" placeholder="Valor R$" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                     <select id="tipo" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
-                        <option value="receita">Receita</option>
                         <option value="despesa">Despesa</option>
+                        <option value="receita">Receita</option>
+                    </select>
+                    <select id="categoria" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                        <option value="Outros">Outros</option>
+                        <option value="Alimentação">🍔 Alimentação</option>
+                        <option value="Moradia">🏠 Moradia</option>
+                        <option value="Transporte">🚗 Transporte</option>
+                        <option value="Saúde">⚕️ Saúde</option>
+                        <option value="Lazer">🎉 Lazer</option>
+                        <option value="Renda">💰 Renda/Salário</option>
                     </select>
                     <input type="date" id="data" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                 </div>
@@ -327,17 +334,15 @@
             listaTransacoes.innerHTML = '';
             let totalReceitas = 0;
             let totalDespesas = 0;
+            let despesasPorCategoria = {}; // NOVO: Para o gráfico
 
             const filtradas = transacoesGlobais.filter(t => {
                 const dataT = new Date(t.data_vencimento + 'T00:00:00');
                 const anoT = dataT.getFullYear();
                 const mesT = dataT.getMonth() + 1;
 
-                if (t.recorrente) {
-                    return anoT === anoAtual && mesAtual >= mesT;
-                } else {
-                    return anoT === anoAtual && mesT === mesAtual;
-                }
+                if (t.recorrente) return anoT === anoAtual && mesAtual >= mesT;
+                else return anoT === anoAtual && mesT === mesAtual;
             }).sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
 
             if (filtradas.length === 0) {
@@ -348,9 +353,15 @@
                 const isReceita = t.tipo === 'receita';
                 const corValor = isReceita ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
                 const sinal = isReceita ? '+' : '-';
+                const cat = t.categoria || 'Outros';
                 
-                if (isReceita) totalReceitas += t.valor;
-                else totalDespesas += t.valor;
+                if (isReceita) {
+                    totalReceitas += t.valor;
+                } else {
+                    totalDespesas += t.valor;
+                    // Soma os valores por categoria para desenhar o gráfico
+                    despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + t.valor;
+                }
 
                 const dataFormatada = new Date(t.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR');
                 const obsBtn = t.observacao ? `<button onclick="toggleObs('${t.id}')" class="text-blue-500 hover:text-blue-700" title="Ver Observação">💬</button>` : '';
@@ -364,7 +375,10 @@
                             
                             <div class="flex-1 ${estiloPago}">
                                 <p class="font-bold text-lg">${t.descricao} <span class="text-xs ml-1">${recurIcon}</span></p>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">${dataFormatada}</p>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs font-semibold px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full">${cat}</span>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">${dataFormatada}</p>
+                                </div>
                             </div>
                             <span class="${corValor} font-bold mr-4 text-lg ${estiloPago}">
                                 ${sinal} R$ ${t.valor.toFixed(2)}
@@ -386,14 +400,18 @@
             saldoFinal.textContent = `R$ ${saldo.toFixed(2)}`;
             saldoFinal.className = saldo >= 0 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold';
 
-            atualizarGrafico(totalReceitas, totalDespesas);
+            atualizarGrafico(despesasPorCategoria); // Agora enviamos as categorias para o gráfico!
         }
 
-        function atualizarGrafico(receitas, despesas) {
+        function atualizarGrafico(despesasPorCategoria) {
             const ctx = document.getElementById('graficoMensal').getContext('2d');
             if (meuGrafico) meuGrafico.destroy();
 
-            if (receitas === 0 && despesas === 0) {
+            const labels = Object.keys(despesasPorCategoria);
+            const dados = Object.values(despesasPorCategoria);
+
+            // Esconde o gráfico se não houver NENHUMA despesa no mês
+            if (labels.length === 0) {
                 document.getElementById('graficoMensal').style.display = 'none';
                 return;
             } else {
@@ -402,14 +420,17 @@
 
             const isDark = document.documentElement.classList.contains('dark');
             const corTexto = isDark ? '#e5e7eb' : '#374151';
+            
+            // Paleta de cores para as fatias do gráfico
+            const cores = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 
             meuGrafico = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Receitas', 'Despesas'],
+                    labels: labels,
                     datasets: [{
-                        data: [receitas, despesas],
-                        backgroundColor: ['#16a34a', '#dc2626'],
+                        data: dados,
+                        backgroundColor: cores.slice(0, labels.length), // Pega a quantidade de cores necessárias
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -418,7 +439,8 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'bottom', labels: { color: corTexto, font: { size: 14 } } }
+                        legend: { position: 'bottom', labels: { color: corTexto, font: { size: 14 } } },
+                        title: { display: true, text: 'Despesas por Categoria', color: corTexto, font: { size: 16 } }
                     }
                 }
             });
@@ -436,6 +458,7 @@
             const desc = document.getElementById('desc').value;
             const valor = document.getElementById('valor').value;
             const tipo = document.getElementById('tipo').value;
+            const categoria = document.getElementById('categoria').value; // NOVO
             const data = document.getElementById('data').value;
             const obs = document.getElementById('obs').value;
             const recorrente = document.getElementById('recorrente').checked;
@@ -445,7 +468,7 @@
 
             const { data: { user } } = await _supabase.auth.getUser();
             const payload = { 
-                descricao: desc, valor: parseFloat(valor), tipo, data_vencimento: data, 
+                descricao: desc, valor: parseFloat(valor), tipo, categoria, data_vencimento: data, 
                 observacao: obs, recorrente, pago, user_id: user.id 
             };
 
@@ -472,6 +495,7 @@
             document.getElementById('desc').value = t.descricao;
             document.getElementById('valor').value = t.valor;
             document.getElementById('tipo').value = t.tipo;
+            document.getElementById('categoria').value = t.categoria || 'Outros'; // NOVO
             document.getElementById('data').value = t.data_vencimento;
             document.getElementById('obs').value = t.observacao || '';
             document.getElementById('recorrente').checked = t.recorrente;
@@ -490,6 +514,7 @@
             idEmEdicao = null;
             document.getElementById('desc').value = '';
             document.getElementById('valor').value = '';
+            document.getElementById('categoria').value = 'Outros'; // NOVO
             document.getElementById('data').value = '';
             document.getElementById('obs').value = '';
             document.getElementById('recorrente').checked = false;
@@ -507,7 +532,6 @@
                 else buscarTodosOsDados();
             }
         };
-
         // INICIALIZAÇÃO
         verificarSessao();
     </script>
