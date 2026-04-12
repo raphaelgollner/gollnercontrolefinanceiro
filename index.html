@@ -52,7 +52,9 @@
 
         <div id="mainSection" class="hidden space-y-6">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                <h2 id="tituloForm" class="text-xl font-semibold mb-4">Adicionar Registro</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <input type="text" id="desc" placeholder="Descrição" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                     <input type="number" step="0.01" id="valor" placeholder="Valor R$" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                     <select id="tipo" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
@@ -76,7 +78,7 @@
                     <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex items-center">
                             <input type="checkbox" id="recorrente" class="mr-2 w-5 h-5 cursor-pointer accent-blue-600">
-                            <label for="recorrente" class="cursor-pointer">Recorrente (Mensal)</label>
+                            <label for="recorrente" class="cursor-pointer">Recorrente (Anual)</label>
                         </div>
                         <div class="flex items-center">
                             <input type="checkbox" id="pago" class="mr-2 w-5 h-5 cursor-pointer accent-green-600">
@@ -172,7 +174,7 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             atualizarTextosTema(isDark);
             if (!mainSection.classList.contains('hidden')) {
-                filtrarEExibirDados(); // Repinta o gráfico com as cores novas
+                filtrarEExibirDados();
             }
         };
 
@@ -265,7 +267,6 @@
                 renderizarAbas();
                 buscarTodosOsDados();
             } else {
-                // Caso não tenha sessão, garante que a tela principal não apareça
                 loginSection.classList.remove('hidden');
                 mainSection.classList.add('hidden');
                 btnLogout.classList.add('hidden');
@@ -334,7 +335,7 @@
             listaTransacoes.innerHTML = '';
             let totalReceitas = 0;
             let totalDespesas = 0;
-            let despesasPorCategoria = {}; // NOVO: Para o gráfico
+            let despesasPorCategoria = {};
 
             const filtradas = transacoesGlobais.filter(t => {
                 const dataT = new Date(t.data_vencimento + 'T00:00:00');
@@ -359,7 +360,6 @@
                     totalReceitas += t.valor;
                 } else {
                     totalDespesas += t.valor;
-                    // Soma os valores por categoria para desenhar o gráfico
                     despesasPorCategoria[cat] = (despesasPorCategoria[cat] || 0) + t.valor;
                 }
 
@@ -400,7 +400,7 @@
             saldoFinal.textContent = `R$ ${saldo.toFixed(2)}`;
             saldoFinal.className = saldo >= 0 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold';
 
-            atualizarGrafico(despesasPorCategoria); // Agora enviamos as categorias para o gráfico!
+            atualizarGrafico(despesasPorCategoria);
         }
 
         function atualizarGrafico(despesasPorCategoria) {
@@ -410,7 +410,6 @@
             const labels = Object.keys(despesasPorCategoria);
             const dados = Object.values(despesasPorCategoria);
 
-            // Esconde o gráfico se não houver NENHUMA despesa no mês
             if (labels.length === 0) {
                 document.getElementById('graficoMensal').style.display = 'none';
                 return;
@@ -420,8 +419,6 @@
 
             const isDark = document.documentElement.classList.contains('dark');
             const corTexto = isDark ? '#e5e7eb' : '#374151';
-            
-            // Paleta de cores para as fatias do gráfico
             const cores = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 
             meuGrafico = new Chart(ctx, {
@@ -430,7 +427,7 @@
                     labels: labels,
                     datasets: [{
                         data: dados,
-                        backgroundColor: cores.slice(0, labels.length), // Pega a quantidade de cores necessárias
+                        backgroundColor: cores.slice(0, labels.length),
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -458,7 +455,7 @@
             const desc = document.getElementById('desc').value;
             const valor = document.getElementById('valor').value;
             const tipo = document.getElementById('tipo').value;
-            const categoria = document.getElementById('categoria').value; // NOVO
+            const categoria = document.getElementById('categoria').value;
             const data = document.getElementById('data').value;
             const obs = document.getElementById('obs').value;
             const recorrente = document.getElementById('recorrente').checked;
@@ -495,7 +492,7 @@
             document.getElementById('desc').value = t.descricao;
             document.getElementById('valor').value = t.valor;
             document.getElementById('tipo').value = t.tipo;
-            document.getElementById('categoria').value = t.categoria || 'Outros'; // NOVO
+            document.getElementById('categoria').value = t.categoria || 'Outros';
             document.getElementById('data').value = t.data_vencimento;
             document.getElementById('obs').value = t.observacao || '';
             document.getElementById('recorrente').checked = t.recorrente;
@@ -514,7 +511,7 @@
             idEmEdicao = null;
             document.getElementById('desc').value = '';
             document.getElementById('valor').value = '';
-            document.getElementById('categoria').value = 'Outros'; // NOVO
+            document.getElementById('categoria').value = 'Outros';
             document.getElementById('data').value = '';
             document.getElementById('obs').value = '';
             document.getElementById('recorrente').checked = false;
@@ -532,6 +529,7 @@
                 else buscarTodosOsDados();
             }
         };
+
         // INICIALIZAÇÃO
         verificarSessao();
     </script>
