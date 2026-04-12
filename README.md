@@ -25,3 +25,8 @@ Uma aplicação web leve, rápida e responsiva para controle financeiro pessoal.
 * **Gráficos:** Chart.js
 * **Backend & Banco de Dados:** Supabase (PostgreSQL + Auth)
 * **Hospedagem:** Netlify
+
+---
+
+## 📄 Licença
+Este projeto é de uso pessoal e educacional.
