@@ -1,171 +1,325 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gollner Controle Financeiro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configuração do Tailwind para Modo Escuro
+        tailwind.config = { darkMode: 'class' }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 p-4 md:p-8">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 md:p-8 transition-colors duration-200">
     <div class="max-w-4xl mx-auto">
+        
         <header class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-blue-700">Controle Financeiro</h1>
-            <button id="btnLogout" class="hidden bg-red-500 text-white px-4 py-2 rounded">Sair</button>
+            <h1 class="text-3xl font-bold text-blue-700 dark:text-blue-400">Controle Financeiro</h1>
+            <div class="flex gap-4">
+                <button id="btnTheme" class="p-2 bg-gray-200 dark:bg-gray-700 rounded-full" title="Alternar Tema">🌙</button>
+                <button id="btnLogout" class="hidden bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Sair</button>
+            </div>
         </header>
 
-        <div id="loginSection" class="bg-white p-6 rounded-xl shadow-md max-w-sm mx-auto">
+        <div id="loginSection" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md max-w-sm mx-auto">
             <h2 class="text-xl font-semibold mb-4 text-center">Acessar Sistema</h2>
-            <input type="text" id="username" placeholder="Nome de Usuário" class="w-full p-2 mb-3 border rounded">
-            <input type="password" id="password" placeholder="Senha" class="w-full p-2 mb-4 border rounded">
+            <input type="text" id="username" placeholder="Nome de Usuário" class="w-full p-2 mb-3 border rounded dark:bg-gray-700 dark:border-gray-600">
+            <input type="password" id="password" placeholder="Senha" class="w-full p-2 mb-4 border rounded dark:bg-gray-700 dark:border-gray-600">
             <button id="btnLogin" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Entrar</button>
         </div>
 
         <div id="mainSection" class="hidden space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-md">
-                <h2 class="text-xl font-semibold mb-4">Adicionar Registro</h2>
+            
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                <h2 id="tituloForm" class="text-xl font-semibold mb-4">Adicionar Registro</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <input type="text" id="desc" placeholder="Descrição" class="p-2 border rounded">
-                    <input type="number" id="valor" placeholder="Valor R$" class="p-2 border rounded">
-                    <select id="tipo" class="p-2 border rounded">
+                    <input type="text" id="desc" placeholder="Descrição" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                    <input type="number" step="0.01" id="valor" placeholder="Valor R$" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                    <select id="tipo" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                         <option value="receita">Receita</option>
                         <option value="despesa">Despesa</option>
                     </select>
-                    <input type="date" id="data" class="p-2 border rounded">
+                    <input type="date" id="data" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                 </div>
-                <div class="mt-4 flex items-center">
-                    <input type="checkbox" id="recorrente" class="mr-2">
-                    <label for="recorrente">Lançamento Recorrente</label>
+                <input type="text" id="obs" placeholder="Observação (opcional)" class="w-full mt-4 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                
+                <div class="mt-4 flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="recorrente" class="mr-2 w-5 h-5">
+                        <label for="recorrente">Lançamento Recorrente (Anual)</label>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button id="btnCancelarEdicao" class="hidden bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 w-full md:w-auto">Cancelar</button>
+                        <button id="btnSalvar" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 w-full md:w-auto">Salvar Registro</button>
+                    </div>
                 </div>
-                <button id="btnSalvar" class="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 w-full md:w-auto">
-                    Salvar Registro
-                </button>
             </div>
 
-            <div class="bg-white p-6 rounded-xl shadow-md">
-                <h2 class="text-xl font-semibold mb-2">Resumo Mensal</h2>
-                <div id="listaTransacoes" class="divide-y mt-4">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Resumo Mensal</h2>
+                    <select id="seletorAno" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 font-bold">
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                </div>
+                <div id="abasMeses" class="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide">
                     </div>
+
+                <div id="listaTransacoes" class="divide-y dark:divide-gray-700 mb-6">
+                    </div>
+
+                <div class="pt-4 border-t-2 border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-center text-xl font-bold">
+                        <span>Balanço do Mês:</span>
+                        <span id="saldoFinal">R$ 0,00</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 1. Configuração de conexão (Mantenha suas chaves aqui)
+        // --- 1. CONFIGURAÇÃO SUPABASE ---
         const SUPABASE_URL = 'https://ttkkbdfzavtdrcdyvcqg.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_NKWL0CxOmT-lcAzHL2vLCw_PpYPIk5D';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 2. Elementos da interface (mapeando os botões e campos)
+        // --- 2. VARIÁVEIS DE ESTADO ---
+        let anoAtual = new Date().getFullYear();
+        let mesAtual = new Date().getMonth() + 1; // 1 a 12
+        let transacoesGlobais = [];
+        let idEmEdicao = null;
+
+        // Elementos UI
         const loginSection = document.getElementById('loginSection');
         const mainSection = document.getElementById('mainSection');
-        const btnLogin = document.getElementById('btnLogin');
-        const btnLogout = document.getElementById('btnLogout');
-        const btnSalvar = document.getElementById('btnSalvar');
+        const listaTransacoes = document.getElementById('listaTransacoes');
+        const saldoFinal = document.getElementById('saldoFinal');
 
-        // --- FUNÇÃO DE LOGIN ---
+        // --- 3. MODO ESCURO ---
+        const htmlElement = document.documentElement;
+        const btnTheme = document.getElementById('btnTheme');
+        
+        if (localStorage.getItem('theme') === 'dark') {
+            htmlElement.classList.add('dark');
+            btnTheme.textContent = '☀️';
+        }
+
+        btnTheme.onclick = () => {
+            htmlElement.classList.toggle('dark');
+            const isDark = htmlElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            btnTheme.textContent = isDark ? '☀️' : '🌙';
+        };
+
+        // --- 4. GERAÇÃO DAS ABAS DE MESES ---
+        const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const abasContainer = document.getElementById('abasMeses');
+        
+        function renderizarAbas() {
+            abasContainer.innerHTML = '';
+            nomesMeses.forEach((nome, index) => {
+                const mesNum = index + 1;
+                const ativo = mesNum === mesAtual ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600';
+                abasContainer.innerHTML += `
+                    <button onclick="mudarMes(${mesNum})" class="px-4 py-2 rounded-lg font-semibold min-w-[60px] ${ativo}">
+                        ${nome}
+                    </button>
+                `;
+            });
+        }
+
+        function mudarMes(mes) {
+            mesAtual = mes;
+            renderizarAbas();
+            filtrarEExibirDados();
+        }
+
+        document.getElementById('seletorAno').value = anoAtual;
+        document.getElementById('seletorAno').onchange = (e) => {
+            anoAtual = parseInt(e.target.value);
+            filtrarEExibirDados();
+        };
+
+        // --- 5. AUTENTICAÇÃO ---
         async function login() {
             const userField = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            
-            // Lógica para aceitar só o nome ou o e-mail completo
             const email = userField.includes('@') ? userField : `${userField}@sistema.com`;
             
             const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            
-            if (error) {
-                alert('Erro: Usuário ou senha incorretos!');
-            } else {
-                verificarSessao();
-            }
+            if (error) alert('Erro: Usuário ou senha incorretos!');
+            else verificarSessao();
         }
 
-        // --- FUNÇÃO QUE SALVA NO BANCO ---
-        async function salvarRegistro() {
-            const descricao = document.getElementById('desc').value;
-            const valor = document.getElementById('valor').value;
-            const tipo = document.getElementById('tipo').value;
-            const data = document.getElementById('data').value;
-            const recorrente = document.getElementById('recorrente').checked;
-
-            if (!descricao || !valor || !data) {
-                alert("Por favor, preencha todos os campos.");
-                return;
-            }
-
-            // Pega o ID do usuário logado no momento
-            const { data: { user } } = await _supabase.auth.getUser();
-
-            const { error } = await _supabase.from('transacoes').insert([
-                { 
-                    descricao: descricao, 
-                    valor: parseFloat(valor), 
-                    tipo: tipo, 
-                    data_vencimento: data, 
-                    recorrente: recorrente,
-                    user_id: user.id 
-                }
-            ]);
-
-            if (error) {
-                alert("Erro ao salvar: " + error.message);
-            } else {
-                alert("Salvo com sucesso!");
-                // Limpa os campos
-                document.getElementById('desc').value = '';
-                document.getElementById('valor').value = '';
-                carregarDados(); // Atualiza a lista na tela
-            }
-        }
-
-        // --- FUNÇÃO PARA VERIFICAR SE ESTÁ LOGADO ---
         async function verificarSessao() {
             const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
                 loginSection.classList.add('hidden');
                 mainSection.classList.remove('hidden');
-                btnLogout.classList.remove('hidden');
-                carregarDados();
+                document.getElementById('btnLogout').classList.remove('hidden');
+                renderizarAbas();
+                buscarTodosOsDados();
             }
         }
 
-        // --- FUNÇÃO PARA CARREGAR OS DADOS ---
-        async function carregarDados() {
-            const { data: transacoes, error } = await _supabase
-                .from('transacoes')
-                .select('*')
-                .order('data_vencimento', { ascending: true });
-
-            const lista = document.getElementById('listaTransacoes');
-            lista.innerHTML = '';
-
-            if (transacoes) {
-                transacoes.forEach(t => {
-                    const corValor = t.tipo === 'receita' ? 'text-green-600' : 'text-red-600';
-                    lista.innerHTML += `
-                        <div class="py-2 flex justify-between items-center">
-                            <div>
-                                <p class="font-bold">${t.descricao}</p>
-                                <p class="text-sm text-gray-500">${new Date(t.data_vencimento).toLocaleDateString('pt-BR')}</p>
-                            </div>
-                            <span class="${corValor} font-bold">
-                                ${t.tipo === 'receita' ? '+' : '-'} R$ ${t.valor.toFixed(2)}
-                            </span>
-                        </div>
-                    `;
-                });
-            }
-        }
-
-        // Atribuição dos cliques aos botões
-        btnLogin.onclick = login;
-        btnSalvar.onclick = salvarRegistro;
-        btnLogout.onclick = async () => {
+        document.getElementById('btnLogin').onclick = login;
+        document.getElementById('btnLogout').onclick = async () => {
             await _supabase.auth.signOut();
             window.location.reload();
         };
 
-        // Roda ao carregar a página
+        // --- 6. CRUD E LÓGICA DE NEGÓCIO ---
+        async function buscarTodosOsDados() {
+            const { data, error } = await _supabase.from('transacoes').select('*');
+            if (data) {
+                transacoesGlobais = data;
+                filtrarEExibirDados();
+            }
+        }
+
+        function filtrarEExibirDados() {
+            listaTransacoes.innerHTML = '';
+            let totalReceitas = 0;
+            let totalDespesas = 0;
+
+            const filtradas = transacoesGlobais.filter(t => {
+                const dataT = new Date(t.data_vencimento + 'T00:00:00'); // Corrige fuso horário
+                const anoT = dataT.getFullYear();
+                const mesT = dataT.getMonth() + 1;
+
+                if (t.recorrente) {
+                    // Se for recorrente, aparece no mês/ano que foi criado e em todos os meses seguintes do mesmo ano
+                    return anoT === anoAtual && mesAtual >= mesT;
+                } else {
+                    return anoT === anoAtual && mesT === mesAtual;
+                }
+            }).sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+
+            if (filtradas.length === 0) {
+                listaTransacoes.innerHTML = '<p class="text-gray-500 py-4 text-center">Nenhum registro neste mês.</p>';
+            }
+
+            filtradas.forEach(t => {
+                const isReceita = t.tipo === 'receita';
+                const corValor = isReceita ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                const sinal = isReceita ? '+' : '-';
+                
+                if (isReceita) totalReceitas += t.valor;
+                else totalDespesas += t.valor;
+
+                const dataFormatada = new Date(t.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR');
+                const obsBtn = t.observacao ? `<button onclick="toggleObs('${t.id}')" class="text-blue-500 hover:text-blue-700" title="Ver Observação">💬</button>` : '';
+                const recurIcon = t.recorrente ? '🔄' : '';
+
+                listaTransacoes.innerHTML += `
+                    <div class="py-3 flex flex-col">
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1">
+                                <p class="font-bold text-lg">${t.descricao} <span class="text-xs ml-1">${recurIcon}</span></p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">${dataFormatada}</p>
+                            </div>
+                            <span class="${corValor} font-bold mr-4 text-lg">
+                                ${sinal} R$ ${t.valor.toFixed(2)}
+                            </span>
+                            <div class="flex gap-3 text-lg">
+                                ${obsBtn}
+                                <button onclick="prepararEdicao('${t.id}')" class="hover:scale-110 transition" title="Editar">📝</button>
+                                <button onclick="excluirRegistro('${t.id}')" class="hover:scale-110 transition" title="Excluir">❌</button>
+                            </div>
+                        </div>
+                        <div id="obs-${t.id}" class="hidden mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 text-sm rounded-lg italic">
+                            ${t.observacao || ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Atualiza Saldo
+            const saldo = totalReceitas - totalDespesas;
+            saldoFinal.textContent = `R$ ${saldo.toFixed(2)}`;
+            saldoFinal.className = saldo >= 0 ? 'text-green-600 dark:text-green-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold';
+        }
+
+        // Mostrar/Ocultar Observação
+        window.toggleObs = (id) => {
+            document.getElementById(`obs-${id}`).classList.toggle('hidden');
+        };
+
+        // Salvar ou Atualizar
+        document.getElementById('btnSalvar').onclick = async () => {
+            const desc = document.getElementById('desc').value;
+            const valor = document.getElementById('valor').value;
+            const tipo = document.getElementById('tipo').value;
+            const data = document.getElementById('data').value;
+            const obs = document.getElementById('obs').value;
+            const recorrente = document.getElementById('recorrente').checked;
+
+            if (!desc || !valor || !data) return alert("Preencha Descrição, Valor e Data!");
+
+            const { data: { user } } = await _supabase.auth.getUser();
+            const payload = { 
+                descricao: desc, valor: parseFloat(valor), tipo, data_vencimento: data, 
+                observacao: obs, recorrente, user_id: user.id 
+            };
+
+            if (idEmEdicao) {
+                await _supabase.from('transacoes').update(payload).eq('id', idEmEdicao);
+            } else {
+                await _supabase.from('transacoes').insert([payload]);
+            }
+
+            limparFormulario();
+            buscarTodosOsDados();
+        };
+
+        // Editar
+        window.prepararEdicao = (id) => {
+            const t = transacoesGlobais.find(x => x.id === id);
+            if (!t) return;
+
+            document.getElementById('desc').value = t.descricao;
+            document.getElementById('valor').value = t.valor;
+            document.getElementById('tipo').value = t.tipo;
+            document.getElementById('data').value = t.data_vencimento;
+            document.getElementById('obs').value = t.observacao || '';
+            document.getElementById('recorrente').checked = t.recorrente;
+
+            idEmEdicao = t.id;
+            document.getElementById('tituloForm').textContent = "Editar Registro";
+            document.getElementById('btnSalvar').textContent = "Atualizar";
+            document.getElementById('btnCancelarEdicao').classList.remove('hidden');
+            window.scrollTo(0, 0); // Sobe a página para o formulário
+        };
+
+        // Cancelar Edição
+        document.getElementById('btnCancelarEdicao').onclick = limparFormulario;
+
+        function limparFormulario() {
+            idEmEdicao = null;
+            document.getElementById('desc').value = '';
+            document.getElementById('valor').value = '';
+            document.getElementById('data').value = '';
+            document.getElementById('obs').value = '';
+            document.getElementById('recorrente').checked = false;
+            
+            document.getElementById('tituloForm').textContent = "Adicionar Registro";
+            document.getElementById('btnSalvar').textContent = "Salvar Registro";
+            document.getElementById('btnCancelarEdicao').classList.add('hidden');
+        }
+
+        // Excluir
+        window.excluirRegistro = async (id) => {
+            if (confirm("Tem certeza que deseja excluir este registro?")) {
+                await _supabase.from('transacoes').delete().eq('id', id);
+                buscarTodosOsDados();
+            }
+        };
+
         verificarSessao();
     </script>
 </body>
