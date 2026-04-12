@@ -32,10 +32,23 @@
         </header>
 
         <div id="loginSection" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md max-w-sm mx-auto">
-            <h2 class="text-xl font-semibold mb-4 text-center">Acessar Sistema</h2>
-            <input type="text" id="username" placeholder="Nome de Usuário" class="w-full p-2 mb-3 border rounded dark:bg-gray-700 dark:border-gray-600">
+            <h2 id="authTitle" class="text-xl font-semibold mb-4 text-center">Acessar Sistema</h2>
+            
+            <input type="email" id="email" placeholder="Seu E-mail" class="w-full p-2 mb-3 border rounded dark:bg-gray-700 dark:border-gray-600">
             <input type="password" id="password" placeholder="Senha" class="w-full p-2 mb-4 border rounded dark:bg-gray-700 dark:border-gray-600">
-            <button id="btnLogin" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Entrar</button>
+            
+            <button id="btnAcaoAuth" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 mb-4 transition-colors">
+                Entrar
+            </button>
+            
+            <div class="flex flex-col gap-2 text-sm text-center">
+                <button id="btnAlternarModo" class="text-gray-600 dark:text-gray-400 hover:underline">
+                    Não tem conta? Crie uma aqui
+                </button>
+                <button id="btnRecuperarSenha" class="text-blue-500 hover:underline">
+                    Esqueci minha senha
+                </button>
+            </div>
         </div>
 
         <div id="mainSection" class="hidden space-y-6">
@@ -181,16 +194,88 @@
             filtrarEExibirDados();
         };
 
-        // --- 5. AUTENTICAÇÃO ---
-        async function login() {
-            const userField = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const email = userField.includes('@') ? userField : `${userField}@sistema.com`;
-            
-            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) alert('Erro: Usuário ou senha incorretos!');
-            else verificarSessao();
+        // --- 5. AUTENTICAÇÃO (LOGIN, CADASTRO E RECUPERAÇÃO) ---
+        let modoAuth = 'login'; // Pode ser: 'login', 'cadastro', 'recuperacao'
+        
+        const inputEmail = document.getElementById('email');
+        const inputPassword = document.getElementById('password');
+        const btnAcaoAuth = document.getElementById('btnAcaoAuth');
+        const authTitle = document.getElementById('authTitle');
+        const btnAlternarModo = document.getElementById('btnAlternarModo');
+        const btnRecuperarSenha = document.getElementById('btnRecuperarSenha');
+
+        // Alterna o visual da tela dependendo do que o usuário quer fazer
+        function atualizarTelaAuth(modo) {
+            modoAuth = modo;
+            inputEmail.value = '';
+            inputPassword.value = '';
+
+            if (modo === 'login') {
+                authTitle.textContent = 'Acessar Sistema';
+                inputPassword.classList.remove('hidden');
+                btnAcaoAuth.textContent = 'Entrar';
+                btnAcaoAuth.className = 'w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 mb-4 transition-colors';
+                btnAlternarModo.textContent = 'Não tem conta? Crie uma aqui';
+                btnAlternarModo.classList.remove('hidden');
+                btnRecuperarSenha.classList.remove('hidden');
+            } else if (modo === 'cadastro') {
+                authTitle.textContent = 'Criar Nova Conta';
+                inputPassword.classList.remove('hidden');
+                btnAcaoAuth.textContent = 'Cadastrar';
+                btnAcaoAuth.className = 'w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 mb-4 transition-colors';
+                btnAlternarModo.textContent = 'Já tem uma conta? Faça login';
+                btnAlternarModo.classList.remove('hidden');
+                btnRecuperarSenha.classList.add('hidden'); // Esconde o esqueci a senha
+            } else if (modo === 'recuperacao') {
+                authTitle.textContent = 'Recuperar Senha';
+                inputPassword.classList.add('hidden'); // Esconde a senha, pois só precisa do e-mail
+                btnAcaoAuth.textContent = 'Enviar link de recuperação';
+                btnAcaoAuth.className = 'w-full bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 mb-4 transition-colors';
+                btnAlternarModo.textContent = 'Voltar para o Login';
+                btnAlternarModo.classList.remove('hidden');
+                btnRecuperarSenha.classList.add('hidden');
+            }
         }
+
+        // Executa a ação baseada no modo atual
+        btnAcaoAuth.onclick = async () => {
+            const email = inputEmail.value.trim();
+            const password = inputPassword.value;
+
+            if (!email) return alert('Por favor, informe um e-mail.');
+
+            if (modoAuth === 'login') {
+                if (!password) return alert('Informe a senha.');
+                const { error } = await _supabase.auth.signInWithPassword({ email, password });
+                if (error) alert('Erro: ' + error.message);
+                else verificarSessao();
+
+            } else if (modoAuth === 'cadastro') {
+                if (!password) return alert('Crie uma senha.');
+                const { error } = await _supabase.auth.signUp({ email, password });
+                if (error) alert('Erro ao criar conta: ' + error.message);
+                else {
+                    alert('Conta criada com sucesso! Você já pode fazer login.');
+                    atualizarTelaAuth('login');
+                }
+
+            } else if (modoAuth === 'recuperacao') {
+                // Configura para onde o Supabase deve mandar o usuário após ele clicar no link do e-mail
+                const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin // Volta para o seu site no Netlify
+                });
+                if (error) alert('Erro: ' + error.message);
+                else alert('Link de recuperação enviado! Verifique seu e-mail (e a caixa de spam).');
+            }
+        };
+
+        // Eventos dos botões de alternância
+        btnAlternarModo.onclick = () => {
+            if (modoAuth === 'login') atualizarTelaAuth('cadastro');
+            else atualizarTelaAuth('login');
+        };
+
+        btnRecuperarSenha.onclick = () => atualizarTelaAuth('recuperacao');
 
         async function verificarSessao() {
             const { data: { session } } = await _supabase.auth.getSession();
@@ -203,82 +288,22 @@
             }
         }
 
-        document.getElementById('btnLogin').onclick = login;
         document.getElementById('btnLogout').onclick = async () => {
             await _supabase.auth.signOut();
             window.location.reload();
         };
 
-        // --- 6. CRUD E LÓGICA DE NEGÓCIO ---
-        async function buscarTodosOsDados() {
-            const { data, error } = await _supabase.from('transacoes').select('*');
-            if (data) {
-                transacoesGlobais = data;
-                filtrarEExibirDados();
-            }
-        }
-
-        function filtrarEExibirDados() {
-            listaTransacoes.innerHTML = '';
-            let totalReceitas = 0;
-            let totalDespesas = 0;
-
-            const filtradas = transacoesGlobais.filter(t => {
-                const dataT = new Date(t.data_vencimento + 'T00:00:00'); // Corrige fuso horário
-                const anoT = dataT.getFullYear();
-                const mesT = dataT.getMonth() + 1;
-
-                if (t.recorrente) {
-                    // Se for recorrente, aparece no mês/ano que foi criado e em todos os meses seguintes do mesmo ano
-                    return anoT === anoAtual && mesAtual >= mesT;
-                } else {
-                    return anoT === anoAtual && mesT === mesAtual;
+        // Escuta se o usuário voltou do e-mail de recuperação de senha
+        _supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                const novaSenha = prompt("Digite sua nova senha:");
+                if (novaSenha) {
+                    const { error } = await _supabase.auth.updateUser({ password: novaSenha });
+                    if (error) alert("Erro ao atualizar senha: " + error.message);
+                    else alert("Senha atualizada com sucesso!");
                 }
-            }).sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
-
-            if (filtradas.length === 0) {
-                listaTransacoes.innerHTML = '<p class="text-gray-500 py-4 text-center">Nenhum registro neste mês.</p>';
             }
-
-                filtradas.forEach(t => {
-                const isReceita = t.tipo === 'receita';
-                const corValor = isReceita ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-                const sinal = isReceita ? '+' : '-';
-                
-                if (isReceita) totalReceitas += t.valor;
-                else totalDespesas += t.valor;
-
-                const dataFormatada = new Date(t.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR');
-                const obsBtn = t.observacao ? `<button onclick="toggleObs('${t.id}')" class="text-blue-500 hover:text-blue-700" title="Ver Observação">💬</button>` : '';
-                const recurIcon = t.recorrente ? '🔄' : '';
-                
-                // Efeito visual se estiver pago
-                const estiloPago = t.pago ? 'opacity-50 line-through' : '';
-
-                listaTransacoes.innerHTML += `
-                    <div class="py-3 flex flex-col transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded px-2 -mx-2">
-                        <div class="flex justify-between items-center gap-3">
-                            <input type="checkbox" ${t.pago ? 'checked' : ''} onchange="marcarComoPago('${t.id}', this.checked)" class="w-5 h-5 cursor-pointer accent-green-600 flex-shrink-0">
-                            
-                            <div class="flex-1 ${estiloPago}">
-                                <p class="font-bold text-lg">${t.descricao} <span class="text-xs ml-1">${recurIcon}</span></p>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">${dataFormatada}</p>
-                            </div>
-                            <span class="${corValor} font-bold mr-4 text-lg ${estiloPago}">
-                                ${sinal} R$ ${t.valor.toFixed(2)}
-                            </span>
-                            <div class="flex gap-3 text-lg flex-shrink-0">
-                                ${obsBtn}
-                                <button onclick="prepararEdicao('${t.id}')" class="hover:scale-110 transition" title="Editar">📝</button>
-                                <button onclick="excluirRegistro('${t.id}')" class="hover:scale-110 transition" title="Excluir">❌</button>
-                            </div>
-                        </div>
-                        <div id="obs-${t.id}" class="hidden mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 text-sm rounded-lg italic">
-                            ${t.observacao || ''}
-                        </div>
-                    </div>
-                `;
-            });
+        });
 
             // Atualiza Saldo
             const saldo = totalReceitas - totalDespesas;
