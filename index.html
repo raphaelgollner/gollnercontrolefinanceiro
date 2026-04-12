@@ -53,11 +53,22 @@
                 </div>
                 <input type="text" id="obs" placeholder="Observação (opcional)" class="w-full mt-4 p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                 
-                <div class="mt-4 flex items-center justify-between flex-wrap gap-4">
-                    <div class="flex items-center">
-                        <input type="checkbox" id="recorrente" class="mr-2 w-5 h-5">
-                        <label for="recorrente">Lançamento Recorrente (Anual)</label>
+            <div class="mt-4 flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="recorrente" class="mr-2 w-5 h-5 cursor-pointer accent-blue-600">
+                            <label for="recorrente" class="cursor-pointer">Recorrente (Anual)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="pago" class="mr-2 w-5 h-5 cursor-pointer accent-green-600">
+                            <label for="pago" class="cursor-pointer">Já Pago/Recebido</label>
+                        </div>
                     </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button id="btnCancelarEdicao" class="hidden bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 w-full md:w-auto">Cancelar</button>
+                        <button id="btnSalvar" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 w-full md:w-auto">Salvar Registro</button>
+                    </div>
+                </div>
                     <div class="flex gap-2 w-full md:w-auto">
                         <button id="btnCancelarEdicao" class="hidden bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 w-full md:w-auto">Cancelar</button>
                         <button id="btnSalvar" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 w-full md:w-auto">Salvar Registro</button>
@@ -229,7 +240,7 @@
                 listaTransacoes.innerHTML = '<p class="text-gray-500 py-4 text-center">Nenhum registro neste mês.</p>';
             }
 
-            filtradas.forEach(t => {
+                filtradas.forEach(t => {
                 const isReceita = t.tipo === 'receita';
                 const corValor = isReceita ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
                 const sinal = isReceita ? '+' : '-';
@@ -240,18 +251,23 @@
                 const dataFormatada = new Date(t.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR');
                 const obsBtn = t.observacao ? `<button onclick="toggleObs('${t.id}')" class="text-blue-500 hover:text-blue-700" title="Ver Observação">💬</button>` : '';
                 const recurIcon = t.recorrente ? '🔄' : '';
+                
+                // Efeito visual se estiver pago
+                const estiloPago = t.pago ? 'opacity-50 line-through' : '';
 
                 listaTransacoes.innerHTML += `
-                    <div class="py-3 flex flex-col">
-                        <div class="flex justify-between items-center">
-                            <div class="flex-1">
+                    <div class="py-3 flex flex-col transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded px-2 -mx-2">
+                        <div class="flex justify-between items-center gap-3">
+                            <input type="checkbox" ${t.pago ? 'checked' : ''} onchange="marcarComoPago('${t.id}', this.checked)" class="w-5 h-5 cursor-pointer accent-green-600 flex-shrink-0">
+                            
+                            <div class="flex-1 ${estiloPago}">
                                 <p class="font-bold text-lg">${t.descricao} <span class="text-xs ml-1">${recurIcon}</span></p>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">${dataFormatada}</p>
                             </div>
-                            <span class="${corValor} font-bold mr-4 text-lg">
+                            <span class="${corValor} font-bold mr-4 text-lg ${estiloPago}">
                                 ${sinal} R$ ${t.valor.toFixed(2)}
                             </span>
-                            <div class="flex gap-3 text-lg">
+                            <div class="flex gap-3 text-lg flex-shrink-0">
                                 ${obsBtn}
                                 <button onclick="prepararEdicao('${t.id}')" class="hover:scale-110 transition" title="Editar">📝</button>
                                 <button onclick="excluirRegistro('${t.id}')" class="hover:scale-110 transition" title="Excluir">❌</button>
@@ -276,6 +292,16 @@
             document.getElementById(`obs-${id}`).classList.toggle('hidden');
         };
 
+        // Marcar como Pago direto da lista
+        window.marcarComoPago = async (id, isPago) => {
+            const { error } = await _supabase.from('transacoes').update({ pago: isPago }).eq('id', id);
+            if (error) {
+                alert("Erro ao atualizar status: " + error.message);
+            } else {
+                buscarTodosOsDados(); // Recarrega a tela para aplicar o efeito visual
+            }
+        };
+
 // Salvar ou Atualizar
         document.getElementById('btnSalvar').onclick = async () => {
             const desc = document.getElementById('desc').value;
@@ -284,13 +310,15 @@
             const data = document.getElementById('data').value;
             const obs = document.getElementById('obs').value;
             const recorrente = document.getElementById('recorrente').checked;
+            const pago = document.getElementById('pago').checked;
 
             if (!desc || !valor || !data) return alert("Preencha Descrição, Valor e Data!");
 
             const { data: { user } } = await _supabase.auth.getUser();
             const payload = { 
                 descricao: desc, valor: parseFloat(valor), tipo, data_vencimento: data, 
-                observacao: obs, recorrente, user_id: user.id 
+                observacao: obs, recorrente, pago, user_id: user.id
+
             };
 
             let error;
@@ -321,6 +349,7 @@
             document.getElementById('data').value = t.data_vencimento;
             document.getElementById('obs').value = t.observacao || '';
             document.getElementById('recorrente').checked = t.recorrente;
+            document.getElementById('pago').checked = t.pago || false;
 
             idEmEdicao = t.id;
             document.getElementById('tituloForm').textContent = "Editar Registro";
@@ -339,6 +368,7 @@
             document.getElementById('data').value = '';
             document.getElementById('obs').value = '';
             document.getElementById('recorrente').checked = false;
+            document.getElementById('pago').checked = false;
             
             document.getElementById('tituloForm').textContent = "Adicionar Registro";
             document.getElementById('btnSalvar').textContent = "Salvar Registro";
